@@ -1,0 +1,55 @@
+version: "3.7"
+
+services:
+    # image project
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        restart: unless-stopped
+        working_dir: /var/www/
+        volumes:
+            - ./:/var/www
+        depends_on:
+            - redis
+        networks:
+            - laravel
+
+    # nginx
+    nginx:
+        image: nginx:alpine
+        restart: unless-stopped
+        ports:
+            - "8989:80"
+        volumes:
+            - ./:/var/www
+            - ./docker/nginx/:/etc/nginx/conf.d/
+        networks:
+            - laravel
+    # redis
+    redis:
+        image: redis:latest
+        networks:
+            - laravel
+    database:
+      image: postgres:14
+      container_name: laravel-template-database
+      ports:
+        - 5432:5432
+      restart: on-failure
+      environment:
+        POSTGRES_DB: database
+        POSTGRES_USER: dev
+        POSTGRES_PASSWORD: dev
+      volumes:
+        - .docker/database:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD", "pg_isready", "-q", "-d", "database", "-U", "dev"]
+        retries: 3
+        timeout: 5s
+      networks:
+          - laravel
+
+networks:
+    laravel:
+        driver: bridge
